@@ -1,0 +1,12 @@
+app:
+  topics:
+    orders: orders.v1
+    audit: audit-events
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orders
+  cloud:
+    stream:
+      bindings:
+        audit-out-0:
+          destination: ${app.topics.audit}

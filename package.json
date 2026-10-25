@@ -1,0 +1,45 @@
+{
+  "name": "java-canvas",
+  "version": "0.1.0",
+  "description": "Generate linked JSON Canvas diagrams (components, Kafka event map, call flows, method flowcharts) for Java / Spring Boot projects",
+  "type": "module",
+  "bin": {
+    "java-canvas": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "fixtures": "bash scripts/fetch-fixtures.sh"
+  },
+  "keywords": [
+    "java",
+    "spring-boot",
+    "kafka",
+    "json-canvas",
+    "obsidian",
+    "diagram",
+    "control-flow"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "elkjs": "^0.12.0",
+    "fast-glob": "^3.3.3",
+    "tree-sitter-java": "^0.23.5",
+    "web-tree-sitter": "^0.27.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.12"
+  }
+}

@@ -1,0 +1,10 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>demo</groupId>
+  <artifactId>kafka-mini</artifactId>
+  <packaging>pom</packaging>
+  <modules>
+    <module>orders-service</module>
+    <module>shipping-service</module>
+  </modules>
+</project>

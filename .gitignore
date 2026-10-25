@@ -1,0 +1,5 @@
+node_modules/
+dist/
+code-view/
+test/fixtures/spring-petclinic/
+test/fixtures/spring-petclinic-ai/
