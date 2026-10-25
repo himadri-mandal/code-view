@@ -8,10 +8,14 @@ import { linkCalls, SymbolTable } from './analyze/resolve.js';
 import { SpringModel, type EntryPoint } from './analyze/spring.js';
 import { validateCanvas, type Canvas } from './canvas/canvas.js';
 import { loadConfig } from './config.js';
+import { FactsIndex } from './facts/index.js';
+import { anchorCanvas } from './layout/anchor.js';
 import type { MethodDecl, Project, TypeDecl } from './model.js';
 import { extractTypes } from './parse/extract.js';
 import { getParser } from './parse/parser.js';
 import { scanProject, type ScanOptions } from './scan.js';
+import { ViewStore, writeCanvas, type RenderResult } from './spec/registry.js';
+import { applyTheme, loadTheme } from './theme/index.js';
 import { componentsCanvas } from './views/components.js';
 import { Paths, type Editor, type ViewContext } from './views/context.js';
 import { flowCanvas } from './views/flow.js';
@@ -31,12 +35,17 @@ export interface GenerateOptions extends ScanOptions {
   entries?: string[];
   editor?: Editor;
   clean?: boolean;
+  /** Ignore previous canvases and lay everything out from scratch (default: keep existing node positions). */
+  relayout?: boolean;
+  /** Also re-render the saved view specs in `<out>/specs` (default true). */
+  views?: boolean;
   log?: (msg: string) => void;
 }
 
 export interface GenerateResult {
   outDir: string;
   files: string[];
+  views: RenderResult[];
   stats: { types: number; entries: number; topics: number; flows: number; methods: number; ms: number };
 }
 
@@ -82,14 +91,22 @@ export async function generate(projectDir: string, opts: GenerateOptions = {}): 
   const cfgMethods = pickCfgMethods(a.project, flows, opts.methods ?? 'flows');
   const ctx: ViewContext = { ...a, flows, cfgMethods, paths: new Paths(), editor: opts.editor ?? 'vscode' };
 
+  const store = new ViewStore(outDir);
+  const theme = loadTheme(outDir);
+  // Read the previous canvases before cleaning so unchanged nodes keep their place.
+  const previous = new Map<string, Canvas | undefined>();
+  const prev = (rel: string) => {
+    if (!previous.has(rel)) previous.set(rel, opts.relayout ? undefined : store.previous(rel));
+    return previous.get(rel);
+  };
+  if (fs.existsSync(outDir)) for (const f of fs.readdirSync(outDir, { recursive: true }) as string[]) if (f.endsWith('.canvas')) prev(f.split(path.sep).join('/'));
   if (opts.clean !== false) for (const d of ['components', 'flows', 'methods']) fs.rmSync(path.join(outDir, d), { recursive: true, force: true });
   const files: string[] = [];
-  const write = (rel: string, canvas: Canvas) => {
+  const write = (rel: string, fresh: Canvas) => {
+    const { canvas } = anchorCanvas(applyTheme(fresh, theme), prev(rel));
     const errors = validateCanvas(canvas);
     if (errors.length) throw new Error(`invalid canvas ${rel}: ${errors.slice(0, 3).join('; ')}`);
-    const abs = path.join(outDir, rel);
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, `${JSON.stringify(canvas, null, '\t')}\n`);
+    writeCanvas(outDir, rel, canvas);
     files.push(rel);
   };
 
@@ -101,9 +118,23 @@ export async function generate(projectDir: string, opts: GenerateOptions = {}): 
   fs.writeFileSync(path.join(outDir, 'README.md'), readme(ctx));
   files.push('README.md');
 
+  const views: RenderResult[] = [];
+  if (opts.views !== false && store.list().length) {
+    const facts = new FactsIndex(a);
+    for (const v of store.list()) {
+      const { spec, errors } = store.read(v.name);
+      const res = spec ? await store.render(spec, facts, { editor: opts.editor, relayout: opts.relayout }) : { name: v.name, nodes: 0, errors, warnings: [] };
+      views.push(res);
+      if (res.canvas) files.push(res.canvas);
+      for (const e of res.errors) log(`view ${v.name}: ${e}`);
+      for (const w of res.warnings) log(`view ${v.name}: ${w}`);
+    }
+  }
+
   return {
     outDir,
     files,
+    views,
     stats: {
       types: a.project.types.size,
       entries: a.spring.entries.length,

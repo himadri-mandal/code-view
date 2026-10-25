@@ -52,7 +52,7 @@ export class Paths {
   }
 }
 
-function safe(s: string): string {
+export function safe(s: string): string {
   return s.replace(/[^\w.-]+/g, '_');
 }
 
@@ -61,7 +61,7 @@ export function link(path: string, label: string): string {
   return `[[${path}|${label.replace(/[|\]]/g, ' ')}]]`;
 }
 
-export function sourceLink(ctx: ViewContext, t: TypeDecl, line: number, label?: string): string {
+export function sourceLink(ctx: Pick<ViewContext, 'editor'>, t: TypeDecl, line: number, label?: string): string {
   const text = label ?? `${t.file.split('/').pop()}:${line}`;
   switch (ctx.editor) {
     case 'none':

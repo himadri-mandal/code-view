@@ -58,27 +58,7 @@ export class Graph {
   }
 }
 
-/** Palette (hex so we are not limited to the six presets). */
-export const COLORS = {
-  inbound: '#3b82f6',
-  service: '#22c55e',
-  outbound: '#f97316',
-  model: '#eab308',
-  config: '#94a3b8',
-  other: '#a1a1aa',
-  kafka: '#a855f7',
-  dlt: '#ef4444',
-  llm: '#ec4899',
-  db: '#f97316',
-  http: '#14b8a6',
-  vector: '#d946ef',
-  decision: '#eab308',
-  loop: '#06b6d4',
-  terminal: '#64748b',
-  error: '#ef4444',
-  call: '#22c55e',
-  entry: '#3b82f6',
-} as const;
+export { COLORS } from '../theme/index.js';
 
 const LINK = /\[\[[^\]|]*\|([^\]]*)\]\]|\[\[([^\]]*)\]\]|\[([^\]]*)\]\([^)]*\)/g;
 

@@ -30,6 +30,39 @@ code-view/
 
 Every node has a source link (`vscode://file/...:line` by default) that opens your editor.
 
+## Ask for the canvas you want (MCP)
+
+`java-canvas mcp` runs an [MCP](https://modelcontextprotocol.io) server, so any MCP client (Claude Code, Claude Desktop, Cursor, …) with any model can explore the project and design canvases:
+
+```bash
+claude mcp add java-canvas -- npx java-canvas mcp /path/to/java-project
+```
+
+Then ask things like *"show how an order reaches shipping, hide the database"*. The `design-canvas` prompt tells the model how to work.
+
+The model never draws. It writes a small **view spec** that says what to show. java-canvas turns the spec into a canvas deterministically:
+
+```yaml
+# code-view/specs/order-to-shipping.view.yaml
+name: order-to-shipping
+title: How an order reaches shipping
+question: how does an order reach shipping
+include:
+  - reachable: { from: entry:OrderController.create, depth: 6 }
+exclude: [kind:external]
+groupBy: [module, class]
+annotations:
+  type:demo.orders.domain.OrderService: { emphasis: highlight, note: Owns the transaction }
+```
+
+Each canvas is built this way so it stays consistent:
+- **Facts are the vocabulary.** Specs can only reference ids that the analyzer found (`type:`, `method:`, `entry:`, `topic:`, `ext:`), or selectors over them (`role:service`, `package:demo.orders.**`, `reachable`, …). Unknown ids are rejected, with suggestions.
+- **The look is fixed.** Colors, icons, node text and layout come from the project theme, the same for every canvas. You can override colors once in `code-view/theme.yaml` (`colors: { service: '#16a34a' }`).
+- **Stable diffs.** On re-render, every node that still exists keeps its id and position, and new nodes are placed next to their neighbours. Each render reports which nodes were added, removed and changed. The model is told to update an existing view (`find_view` → `update_view`) instead of creating a new one.
+- **No LLM needed to refresh.** Specs are plain files you can commit. `java-canvas render` (or a normal `java-canvas` run) re-renders them from the current code. Pass `--relayout` to start the layout from scratch.
+
+Tools: `project_summary`, `search`, `get`, `neighbors`, `trace`, `source`, `list_views`, `find_view`, `get_view`, `spec_reference`, `create_view`, `update_view` (JSON merge patch), `render`, `generate_all`. `create_view` and `update_view` accept `dry_run`.
+
 ## Options
 
 ```
@@ -44,6 +77,10 @@ java-canvas [projectDir]
       --include-tests       also parse src/test/java
       --include-accessors   keep getters/setters in call flows
       --editor <name>       source links: vscode | cursor | idea | none
+      --relayout            ignore existing canvases and lay out from scratch
+
+java-canvas render [projectDir]   re-render saved view specs from the current code
+java-canvas mcp [projectDir]      run the MCP server on stdio
 ```
 
 Programmatic use: `import { generate, analyze } from 'java-canvas'`.

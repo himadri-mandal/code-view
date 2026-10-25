@@ -7,7 +7,7 @@ const ELK = ELKModule as unknown as new () => { layout(g: ElkNode): Promise<ElkN
 const elk = new ELK();
 const GROUP_PADDING = '[top=60,left=30,bottom=30,right=30]';
 
-interface Box {
+export interface Box {
   x: number;
   y: number;
   width: number;
@@ -96,13 +96,18 @@ export function toCanvas(g: Graph, name: string, boxes: Map<string, Box>): Canva
     if (b) nodes.push({ id: id(n.id), type: 'text', text: n.text, ...b, ...(n.color ? { color: n.color } : {}) });
   }
   const edges: CanvasEdge[] = [];
-  g.edges.forEach((e, i) => {
+  // Edge ids derive from endpoints and label (not position in the list) so they survive unrelated changes.
+  const used = new Set<string>();
+  g.edges.forEach((e) => {
     const a = boxes.get(e.from);
     const b = boxes.get(e.to);
     if (!a || !b) return;
+    let key = `edge:${e.from}>${e.to}|${e.label ?? ''}`;
+    for (let n = 2; used.has(key); n++) key = `edge:${e.from}>${e.to}|${e.label ?? ''}#${n}`;
+    used.add(key);
     const [fromSide, toSide] = e.back ? backSides(g.direction) : sides(a, b, g.direction);
     edges.push({
-      id: id(`edge:${i}:${e.from}>${e.to}`),
+      id: id(key),
       fromNode: id(e.from),
       fromSide,
       toNode: id(e.to),
@@ -115,7 +120,7 @@ export function toCanvas(g: Graph, name: string, boxes: Map<string, Box>): Canva
   return { nodes, edges };
 }
 
-function sides(a: Box, b: Box, dir: 'RIGHT' | 'DOWN'): [Side, Side] {
+export function sides(a: Box, b: Box, dir: 'RIGHT' | 'DOWN'): [Side, Side] {
   const dx = b.x + b.width / 2 - (a.x + a.width / 2);
   const dy = b.y + b.height / 2 - (a.y + a.height / 2);
   const horizontalGap = b.x >= a.x + a.width || a.x >= b.x + b.width;
